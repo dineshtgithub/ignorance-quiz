@@ -5,415 +5,117 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>How Ignorant Am I?</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;600&display=swap');
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      font-family: 'Rubik', sans-serif;
-      background: #000;
-      color: #f5f5f5;
-      overflow-x: hidden;
-    }
-    canvas {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: -1;
-      pointer-events: none;
-    }
-    .content {
-      position: relative;
-      max-width: 700px;
-      margin: auto;
-      padding: 2em;
-    }
-    .question, #result, #final-score, #download-link {
-      background: rgba(255,255,255,0.12);
-      border-radius: 12px;
-      padding: 1.5em;
-      margin-bottom: 1.5em;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-      font-size: 1.1em;
-    }
-    h1 {
-      text-align: center;
-      color: #00ff88;
-      letter-spacing: 1px;
-      font-size: 2em;
-      margin-top: 0.2em;
-      margin-bottom: 0.7em;
-      text-shadow: 0 0 12px #0f8, 0 0 20px #0a4;
-    }
-    .options label, .confidence label {
-      display: inline-block;
-      margin: 0.3em 0.7em 0.3em 0;
-      font-size: 1.05em;
-    }
-    button {
-      padding: 0.7em 1.5em;
-      margin: 1em 0.5em 1em 0;
-      border: none;
-      border-radius: 5px;
-      background: #27ae60;
-      color: white;
-      font-size: 1em;
-      font-weight: 600;
-      box-shadow: 0 2px 6px rgba(40,255,180,0.12);
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    button:hover {
-      background: #19b878;
-    }
-    #theme-toggle {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: #1a1a1a;
-      border: 1.5px solid #00ff88;
-      color: #00ff88;
-      font-size: 1.1em;
-    }
-    .progress-bar {
-      height: 22px;
-      background: #333;
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 1.3em;
-      border: 1px solid #222;
-      box-shadow: 0 0 8px #0f4 inset;
-    }
-    .progress {
-      height: 100%;
-      background: linear-gradient(90deg, #2ecc71, #00ff88 80%);
-      width: 0%;
-      transition: width 0.4s cubic-bezier(.7,.5,.3,1.2);
-    }
-    .explanation {
-      margin-top: 0.5em;
-      font-style: italic;
-      color: #aaffcc;
-    }
-    .correct { color: #00ff88; font-weight: bold; }
-    .wrong { color: #ff5858; font-weight: bold; }
-    .icon { font-size: 1.3em; vertical-align: -10%; }
-    .timer {
-      font-size: 1em;
-      float: right;
-      color: #80ffbf;
-      margin-right: 1em;
-      font-family: monospace;
-      letter-spacing: 1px;
-    }
-    .dark .question, .dark #result, .dark #final-score {
-      background: #161e1e;
-      color: #d4ffd4;
-    }
-    @media (max-width: 600px) {
-      .content { padding: 0.4em; }
-      h1 { font-size: 1.3em; }
-    }
+    body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; padding: 2em; }
+    .question { margin-bottom: 2em; }
+    .options input { margin-right: 0.5em; }
+    .confidence input { margin: 0.5em; }
+    #result, #final-score, #download-link { display: none; margin-top: 2em; padding: 1em; border: 2px solid #ccc; }
+    .correct { color: green; }
+    .incorrect { color: red; }
+    button { margin-top: 1em; padding: 0.5em 1em; }
+    .explanation { margin-top: 0.5em; font-style: italic; }
   </style>
 </head>
 <body>
-<canvas id="bg"></canvas>
-<div class="content">
-  <button id="theme-toggle" onclick="toggleTheme()">🌙 Toggle Theme</button>
   <h1>Quiz: How ignorant am I?</h1>
-  <div class="timer" id="timer"></div>
-  <div class="progress-bar"><div id="progress" class="progress"></div></div>
   <div id="quiz"></div>
   <div id="result"></div>
   <div id="final-score"></div>
-  <a id="download-link" download="quiz_results.txt" style="display:none">Download my results</a>
+  <a id="download-link" download="quiz_results.txt">Download my results</a>
   <br>
-  <button onclick="restartQuiz()" style="display:none" id="restart-btn">Restart the quiz</button>
-  <button onclick="copyScore()" style="display:none" id="copy-btn">Copy my score</button>
-</div>
+  <button onclick="restartQuiz()">Restart the quiz</button>
+  <button onclick="copyScore()">Copy my score</button>
 
 <script>
-// Matrix animation with math symbols
-const canvas = document.getElementById('bg');
-const ctx = canvas.getContext('2d');
-
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
-
-const chars = '0 1 π Σ ∞ ∫ ∆ √ ≈ ≡ ∇ ≠ ⊂ ⊃ ∅ ∈ ∉ ∀ ∃'.split(' ');
-const fontSize = 18;
-let columns = Math.floor(canvas.width / fontSize);
-let drops = Array(columns).fill(1);
-
-function drawMatrix() {
-  ctx.fillStyle = 'rgba(0,0,0,0.13)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.shadowColor = '#00ff88';
-  ctx.shadowBlur = 12;
-  ctx.font = fontSize + "px monospace";
-  ctx.fillStyle = '#00ff88';
-  columns = Math.floor(canvas.width / fontSize);
-  if (drops.length !== columns) drops = Array(columns).fill(1);
-
-  for (let i = 0; i < columns; i++) {
-    const char = chars[Math.floor(Math.random() * chars.length)];
-    ctx.fillText(char, i * fontSize, drops[i] * fontSize);
-    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-      drops[i] = 0;
-    }
-    drops[i]++;
-  }
-  ctx.shadowBlur = 0;
-}
-setInterval(drawMatrix, 50);
-
-// Quiz Data
 const questions = [
-  {
-    q: "Which contains more water by percentage?",
-    options: ["Brain", "Blood"],
-    answer: 0,
-    explanation: "The human brain contains about 75% water, which is higher than blood."
-  },
-  {
-    q: "Who published their key work first?",
-    options: ["Charles Darwin", "Gregor Mendel"],
-    answer: 0,
-    explanation: "Darwin's 'On the Origin of Species' (1859) predates Mendel's genetics work (1866)."
-  },
-  {
-    q: "Which is the bigger planet?",
-    options: ["Venus", "Earth"],
-    answer: 1,
-    explanation: "Earth is larger than Venus, both in diameter and mass."
-  },
-  {
-    q: "Which molecule has more atoms?",
-    options: ["Caffeine", "Aspirin"],
-    answer: 0,
-    explanation: "Caffeine (C8H10N4O2, 24 atoms) has more atoms than aspirin (C9H8O4, 21 atoms)."
-  },
-  {
-    q: "Which has the higher melting point?",
-    options: ["Gold", "Silver"],
-    answer: 0,
-    explanation: "Gold melts at 1064°C, silver at 962°C. Gold's melting point is higher."
-  }
+  { q: "Which contains more water by percentage?", a: "Brain", options: ["Brain", "Blood"], exp: "The brain is about 73% water, blood is about 50% water." },
+  { q: "Who published their key work first?", a: "Charles Darwin", options: ["Charles Darwin", "Gregor Mendel"], exp: "Darwin published On the Origin of Species in 1859; Mendel published in 1866." },
+  { q: "Which is the bigger planet?", a: "Earth", options: ["Venus", "Earth"], exp: "Venus: 6,052 km radius, Earth: 6,378 km radius." },
+  { q: "Which molecule has more atoms?", a: "Caffeine", options: ["Caffeine", "Aspirin"], exp: "Caffeine has 24 atoms; aspirin has 21 atoms." },
+  { q: "Which has the higher melting point?", a: "Gold", options: ["Gold", "Silver"], exp: "Gold: 1064 °C, Silver: 962 °C." }
 ];
 
 const scoreTable = {
-  5: {right:0, wrong:0},
-  6: {right:9, wrong:-11},
-  7: {right:16, wrong:-24},
-  8: {right:21, wrong:-39},
-  9: {right:24, wrong:-56},
-  10:{right:25, wrong:-75}
+  5: [0, 0], 6: [9, -11], 7: [16, -24],
+  8: [21, -39], 9: [24, -56], 10: [25, -75]
 };
 
-let userAnswers = [];
-let confidences = [];
-let explanations = [];
-let userTimes = [];
-let cur = 0;
-let startTime = 0;
-let totalTime = 0;
+let responses = [];
+let startTime;
 
-// Theme
-function toggleTheme() {
-  document.body.classList.toggle('dark');
-  let btn = document.getElementById('theme-toggle');
-  if(document.body.classList.contains('dark')) {
-    btn.innerText = "☀️ Toggle Theme";
-  } else {
-    btn.innerText = "🌙 Toggle Theme";
-  }
-}
-
-// Timer
-function updateTimer() {
-  const now = Date.now();
-  let elapsed = Math.floor((now - startTime + totalTime)/1000);
-  let min = Math.floor(elapsed/60);
-  let sec = elapsed%60;
-  document.getElementById('timer').textContent = `⏱️ ${min}:${sec.toString().padStart(2, '0')}`;
-}
-let timerInterval;
-
-// Show question
-function showQuestion() {
-  if (cur === 0) { startTime = Date.now(); timerInterval = setInterval(updateTimer, 500);}
-  updateTimer();
-  document.getElementById('final-score').innerHTML = '';
-  document.getElementById('download-link').style.display = 'none';
-  document.getElementById('restart-btn').style.display = 'none';
-  document.getElementById('copy-btn').style.display = 'none';
-
-  let q = questions[cur];
-  let html = `<div class="question">
-    <div style="font-size:1.2em; font-weight:600;">
-      <span class="icon">📝</span> Question ${cur+1} of ${questions.length}
-    </div>
-    <div style="margin:1em 0 1.2em 0;">${q.q}</div>
-    <div class="options">`;
-  q.options.forEach((opt, i) => {
-    html += `<label><input type="radio" name="option" value="${i}"> ${opt}</label>`;
-  });
-  html += `</div>
-    <div class="confidence" style="margin-top:1em;">
-      <label for="conf"><span class="icon">📈</span> Confidence: </label>
-      <input type="range" min="5" max="10" value="7" id="conf" oninput="document.getElementById('conf-val').textContent=this.value;">
-      <span id="conf-val">7</span> / 10
-      <span style="font-size:0.92em; color:#b2ffb2;">(5 = guessing, 10 = absolutely sure)</span>
-    </div>
-    <button onclick="submitAnswer()">Submit</button>
-    <div class="progress-bar" style="height:14px; margin-top:1em;"><div class="progress" id="progress-inner" style="background:#00ff88; width:${(cur/questions.length)*100}%;"></div></div>
-  </div>`;
-  document.getElementById('quiz').innerHTML = html;
-  document.getElementById('result').innerHTML = '';
-  updateProgressBar();
-}
-
-// Progress bar (top)
-function updateProgressBar() {
-  let percent = ((cur)/questions.length)*100;
-  document.getElementById('progress').style.width = percent + '%';
-}
-
-// Handle submit
-function submitAnswer() {
-  let radios = document.getElementsByName('option');
-  let selected = null;
-  for(let r of radios) {
-    if(r.checked) { selected = parseInt(r.value); break; }
-  }
-  if(selected === null) {
-    alert("Please select an answer before submitting.");
-    return;
-  }
-  let conf = parseInt(document.getElementById('conf').value);
-  userAnswers[cur] = selected;
-  confidences[cur] = conf;
-  let q = questions[cur];
-  let correct = selected === q.answer;
-  explanations[cur] = q.explanation;
-  userTimes[cur] = Date.now();
-  // Show feedback and explanation
-  let icon = correct ? '<span class="icon">✅</span>' : '<span class="icon">❌</span>';
-  let explanation = `<div class="explanation">${q.explanation}</div>`;
-  let feedback = `
-    <div style="font-size:1.18em; margin-top:0.7em;">
-      ${icon} ${correct ? "Correct!" : "Wrong."} 
-      <span style="margin-left:1em;">Your confidence: <strong>${conf}/10</strong></span>
-    </div>
-    <div>${explanation}</div>
-    <button onclick="nextQuestion()" style="margin-top:1.2em;">Next Question</button>
-  `;
-  document.getElementById('quiz').innerHTML = '';
-  document.getElementById('result').innerHTML = feedback;
-  document.getElementById('progress-inner').style.width = `${((cur+1)/questions.length)*100}%`;
-}
-
-// Next
-function nextQuestion() {
-  cur++;
-  if(cur < questions.length) {
-    showQuestion();
-  } else {
-    showFinalScore();
-  }
-}
-
-// Final score and results
-function showFinalScore() {
-  clearInterval(timerInterval);
-  document.getElementById('quiz').innerHTML = '';
-  document.getElementById('result').innerHTML = '';
-
-  // Calculate score
-  let total = 0;
-  let txt = '';
-  let scoreBreakdown = [];
-  for(let i=0; i<questions.length; i++) {
-    let q = questions[i];
-    let correct = userAnswers[i] === q.answer;
-    let conf = confidences[i];
-    let score = correct ? scoreTable[conf].right : scoreTable[conf].wrong;
-    total += score;
-    let icon = correct ? '<span class="icon">✅</span>' : '<span class="icon">❌</span>';
-    let qtxt = `<div style="margin:0.3em 0;"><strong>Q${i+1}:</strong> ${icon} Your answer: <em>${q.options[userAnswers[i]]}</em>, Confidence: <strong>${conf}</strong>, <span style="color:${correct?'#00ff88':'#ff5858'}">Score: ${score}</span></div>
-    <div class="explanation">${q.explanation}</div>`;
-    txt += qtxt;
-    scoreBreakdown.push({
-      question: q.q,
-      yourAnswer: q.options[userAnswers[i]],
-      correct: correct,
-      confidence: conf,
-      score: score,
-      explanation: q.explanation
-    });
-  }
-  let verdict = '';
-  if(total >= 70) verdict = "🌟 Top of the class! Your knowledge and confidence are in harmony.";
-  else if(total >= 35) verdict = "✅ Good balance of knowledge and humility.";
-  else if(total >= 0) verdict = "🟡 Not bad, but you can calibrate your confidence.";
-  else verdict = "⚠️ Caution: overconfidence detected! Try lower confidence if unsure.";
-
-  let elapsed = Math.floor((userTimes[userTimes.length-1] - startTime)/1000);
-  let min = Math.floor(elapsed/60);
-  let sec = elapsed%60;
-  let scoreMsg = `
-    <div id="final-score" class="question">
-      <div style="font-size:1.2em; margin-bottom:0.7em;"><span class="icon">🎯</span> <b>Final Score: ${total}</b></div>
-      <div style="margin-bottom:1.2em; font-size:1.07em;">${verdict}</div>
-      <div><span class="icon">⏱️</span> Total time: ${min}:${sec.toString().padStart(2, '0')}</div>
-      <hr>
-      <b>Score breakdown and explanations:</b>
-      ${txt}
-    </div>
-  `;
-
-  document.getElementById('final-score').innerHTML = scoreMsg;
-  document.getElementById('download-link').style.display = '';
-  document.getElementById('restart-btn').style.display = '';
-  document.getElementById('copy-btn').style.display = '';
-  // Download link
-  let details = `Final Score: ${total}\nVerdict: ${verdict}\nTime: ${min}:${sec.toString().padStart(2, '0')}\n\n`;
-  for (let i=0;i<scoreBreakdown.length;i++) {
-    let q = scoreBreakdown[i];
-    details += `Q${i+1}: ${q.question}\nYour Answer: ${q.yourAnswer} (${q.correct ? "Correct" : "Wrong"})\nConfidence: ${q.confidence}\nScore: ${q.score}\nExplanation: ${q.explanation}\n\n`;
-  }
-  document.getElementById('download-link').href = "data:text/plain;charset=utf-8," + encodeURIComponent(details);
-}
-
-// Copy score
-function copyScore() {
-  let scoreElem = document.getElementById('final-score');
-  if (!scoreElem) return;
-  let temp = document.createElement("textarea");
-  temp.value = scoreElem.innerText;
-  document.body.appendChild(temp);
-  temp.select();
-  document.execCommand("copy");
-  document.body.removeChild(temp);
-  alert("Results copied to clipboard!");
-}
-
-// Restart
-function restartQuiz() {
-  cur = 0;
-  userAnswers = [];
-  confidences = [];
-  explanations = [];
-  userTimes = [];
-  totalTime = 0;
+function renderQuiz() {
   startTime = Date.now();
-  showQuestion();
-  document.getElementById('download-link').style.display = 'none';
-  document.getElementById('restart-btn').style.display = 'none';
-  document.getElementById('copy-btn').style.display = 'none
+  const quiz = document.getElementById("quiz");
+  quiz.innerHTML = "";
+  questions.forEach((item, index) => {
+    const div = document.createElement("div");
+    div.className = "question";
+    div.innerHTML = `<strong>Question ${index + 1} of 5:</strong><br>${item.q}`;
+    const opts = item.options.map(opt => `<label><input type="radio" name="q${index}" value="${opt}">${opt}</label><br>`).join("");
+    div.innerHTML += `<div class="options">${opts}</div>`;
+    const scale = [...Array(6)].map((_, i) => i + 5).map(val => `<label>${val}<input type="radio" name="c${index}" value="${val}"></label>`).join(" ");
+    div.innerHTML += `<p>How confident are you, on a scale from 5 to 10?</p><div class="confidence">${scale}</div>`;
+    quiz.appendChild(div);
+  });
+  const btn = document.createElement("button");
+  btn.textContent = "Submit Quiz";
+  btn.onclick = evaluateQuiz;
+  quiz.appendChild(btn);
+}
+
+function evaluateQuiz() {
+  responses = [];
+  let total = 0;
+  const result = document.getElementById("result");
+  result.innerHTML = "";
+  questions.forEach((item, i) => {
+    const answer = document.querySelector(`input[name=q${i}]:checked`);
+    const conf = document.querySelector(`input[name=c${i}]:checked`);
+    if (!answer || !conf) {
+      alert("Please answer all questions and rate your confidence.");
+      return;
+    }
+    const isCorrect = answer.value === item.a;
+    const confidence = parseInt(conf.value);
+    const score = isCorrect ? scoreTable[confidence][0] : scoreTable[confidence][1];
+    total += score;
+    responses.push({ q: item.q, answer: answer.value, correct: item.a, confidence, isCorrect, score, explanation: item.exp });
+  });
+  document.getElementById("final-score").style.display = "block";
+  const timeTaken = Math.round((Date.now() - startTime) / 1000);
+  document.getElementById("final-score").innerHTML = `<h2>Final score: ${total}</h2>${getInterpretation(total)}<p><small>Time taken: ${timeTaken} seconds</small></p>`;
+  const details = responses.map((r, i) =>
+    `<p><strong>Q${i + 1}</strong> - ${r.isCorrect ? "✅ Correct" : "❌ Incorrect"}: You answered "${r.answer}" with confidence ${r.confidence}. Correct answer: ${r.correct}. [Score: ${r.score}]<br><span class='explanation'>${r.explanation}</span></p>`
+  ).join("");
+  result.innerHTML = details;
+  result.style.display = "block";
+  const downloadData = details.replace(/<[^>]*>/g, "") + `\nFinal score: ${total}`;
+  const blob = new Blob([downloadData], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const link = document.getElementById("download-link");
+  link.href = url;
+  link.style.display = "block";
+}
+
+function getInterpretation(score) {
+  if (score >= 90) return "<p><strong>Top of the class!</strong> This score generally comes from high knowledge combined with great uncertainty awareness.</p>";
+  if (score > 0) return "<p>You have a good sense of your knowledge. Well done!</p>";
+  return "<p>Caution: Your confidence may have outpaced your accuracy. Try again with a bit more doubt.</p>";
+}
+
+function restartQuiz() {
+  document.getElementById("result").style.display = "none";
+  document.getElementById("final-score").style.display = "none";
+  document.getElementById("download-link").style.display = "none";
+  renderQuiz();
+}
+
+function copyScore() {
+  const text = document.getElementById("final-score").innerText;
+  navigator.clipboard.writeText(text).then(() => alert("Score copied to clipboard!"));
+}
+
+renderQuiz();
+</script>
+</body>
+</html>
