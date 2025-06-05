@@ -9,10 +9,11 @@
     .question { margin-bottom: 2em; }
     .options input { margin-right: 0.5em; }
     .confidence input { margin: 0.5em; }
-    #result, #final-score { display: none; margin-top: 2em; padding: 1em; border: 2px solid #ccc; }
+    #result, #final-score, #download-link { display: none; margin-top: 2em; padding: 1em; border: 2px solid #ccc; }
     .correct { color: green; }
     .incorrect { color: red; }
     button { margin-top: 1em; padding: 0.5em 1em; }
+    .explanation { margin-top: 0.5em; font-style: italic; }
   </style>
 </head>
 <body>
@@ -20,15 +21,18 @@
   <div id="quiz"></div>
   <div id="result"></div>
   <div id="final-score"></div>
+  <a id="download-link" download="quiz_results.txt">Download my results</a>
+  <br>
   <button onclick="restartQuiz()">Restart the quiz</button>
+  <button onclick="copyScore()">Copy my score</button>
 
 <script>
 const questions = [
-  { q: "Which contains more water by percentage?", a: "Brain", options: ["Brain", "Blood"] },
-  { q: "Who published their key work first?", a: "Charles Darwin", options: ["Charles Darwin", "Gregor Mendel"] },
-  { q: "Which is the bigger planet?", a: "Earth", options: ["Venus", "Earth"] },
-  { q: "Which molecule has more atoms?", a: "Caffeine", options: ["Caffeine", "Aspirin"] },
-  { q: "Which has the higher melting point?", a: "Gold", options: ["Gold", "Silver"] }
+  { q: "Which contains more water by percentage?", a: "Brain", options: ["Brain", "Blood"], exp: "The brain is about 73% water, blood is about 50% water." },
+  { q: "Who published their key work first?", a: "Charles Darwin", options: ["Charles Darwin", "Gregor Mendel"], exp: "Darwin published On the Origin of Species in 1859; Mendel published in 1866." },
+  { q: "Which is the bigger planet?", a: "Earth", options: ["Venus", "Earth"], exp: "Venus: 6,052 km radius, Earth: 6,378 km radius." },
+  { q: "Which molecule has more atoms?", a: "Caffeine", options: ["Caffeine", "Aspirin"], exp: "Caffeine has 24 atoms; aspirin has 21 atoms." },
+  { q: "Which has the higher melting point?", a: "Gold", options: ["Gold", "Silver"], exp: "Gold: 1064 °C, Silver: 962 °C." }
 ];
 
 const scoreTable = {
@@ -37,25 +41,20 @@ const scoreTable = {
 };
 
 let responses = [];
+let startTime;
 
 function renderQuiz() {
+  startTime = Date.now();
   const quiz = document.getElementById("quiz");
   quiz.innerHTML = "";
-
   questions.forEach((item, index) => {
     const div = document.createElement("div");
     div.className = "question";
     div.innerHTML = `<strong>Question ${index + 1} of 5:</strong><br>${item.q}`;
-
-    const opts = item.options.map(opt =>
-      `<label><input type="radio" name="q${index}" value="${opt}">${opt}</label><br>`
-    ).join("");
+    const opts = item.options.map(opt => `<label><input type="radio" name="q${index}" value="${opt}">${opt}</label><br>`).join("");
     div.innerHTML += `<div class="options">${opts}</div>`;
-
-    const scale = [...Array(6)].map((_, i) => i + 5)
-      .map(val => `<label>${val}<input type="radio" name="c${index}" value="${val}"></label>`).join(" ");
+    const scale = [...Array(6)].map((_, i) => i + 5).map(val => `<label>${val}<input type="radio" name="c${index}" value="${val}"></label>`).join(" ");
     div.innerHTML += `<p>How confident are you, on a scale from 5 to 10?</p><div class="confidence">${scale}</div>`;
-
     quiz.appendChild(div);
   });
   const btn = document.createElement("button");
@@ -69,7 +68,6 @@ function evaluateQuiz() {
   let total = 0;
   const result = document.getElementById("result");
   result.innerHTML = "";
-
   questions.forEach((item, i) => {
     const answer = document.querySelector(`input[name=q${i}]:checked`);
     const conf = document.querySelector(`input[name=c${i}]:checked`);
@@ -81,17 +79,22 @@ function evaluateQuiz() {
     const confidence = parseInt(conf.value);
     const score = isCorrect ? scoreTable[confidence][0] : scoreTable[confidence][1];
     total += score;
-    responses.push({ q: item.q, answer: answer.value, correct: item.a, confidence, isCorrect, score });
+    responses.push({ q: item.q, answer: answer.value, correct: item.a, confidence, isCorrect, score, explanation: item.exp });
   });
-
-  // Show result
   document.getElementById("final-score").style.display = "block";
-  document.getElementById("final-score").innerHTML = `<h2>Final score: ${total}</h2>` + getInterpretation(total);
+  const timeTaken = Math.round((Date.now() - startTime) / 1000);
+  document.getElementById("final-score").innerHTML = `<h2>Final score: ${total}</h2>${getInterpretation(total)}<p><small>Time taken: ${timeTaken} seconds</small></p>`;
   const details = responses.map((r, i) =>
-    `<p><strong>Q${i + 1}</strong> - ${r.isCorrect ? "✅ Correct" : "❌ Incorrect"}: You answered "${r.answer}" with confidence ${r.confidence}. Correct answer: ${r.correct}. [Score: ${r.score}]</p>`
+    `<p><strong>Q${i + 1}</strong> - ${r.isCorrect ? "✅ Correct" : "❌ Incorrect"}: You answered "${r.answer}" with confidence ${r.confidence}. Correct answer: ${r.correct}. [Score: ${r.score}]<br><span class='explanation'>${r.explanation}</span></p>`
   ).join("");
   result.innerHTML = details;
   result.style.display = "block";
+  const downloadData = details.replace(/<[^>]*>/g, "") + `\nFinal score: ${total}`;
+  const blob = new Blob([downloadData], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const link = document.getElementById("download-link");
+  link.href = url;
+  link.style.display = "block";
 }
 
 function getInterpretation(score) {
@@ -103,7 +106,13 @@ function getInterpretation(score) {
 function restartQuiz() {
   document.getElementById("result").style.display = "none";
   document.getElementById("final-score").style.display = "none";
+  document.getElementById("download-link").style.display = "none";
   renderQuiz();
+}
+
+function copyScore() {
+  const text = document.getElementById("final-score").innerText;
+  navigator.clipboard.writeText(text).then(() => alert("Score copied to clipboard!"));
 }
 
 renderQuiz();
