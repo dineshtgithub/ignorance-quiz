@@ -269,6 +269,8 @@
 
   .restart-row{ margin-top: 2.5rem; }
 
+  #post-result{ margin-top: 1.6rem; }
+
   .source-note{
     margin-top: 3.5rem;
     padding-top: 1.6rem;
@@ -336,6 +338,7 @@
   <div id="quiz"></div>
   <div id="final-score"></div>
   <div id="result"></div>
+  <div id="post-result"></div>
 
   <div class="restart-row">
     <button class="ghost-btn" onclick="restartQuiz()">Restart the quiz</button>
@@ -434,6 +437,20 @@ function evaluateQuiz() {
     <h2>${total}</h2>
     <div class="score-box">${getInterpretation(total)}</div>
     <p class="how-did-you-do">How did you do? Any positive score indicates some degree of awareness about your own knowledge level (the maximum positive score is 125, indicating perfect knowledge with perfect confidence). If your score was negative, you are supremely overconfident.</p>
+  `;
+
+  const details = responses.map((r, i) =>
+    `<div class="row ${r.isCorrect ? 'correct' : 'incorrect'}">
+       <span class="verdict">${r.isCorrect ? "Correct" : "Incorrect"}</span> —
+       you answered "${r.answer}" at confidence ${r.confidence}.
+       <span class="meta">${r.fact} · Score: ${r.score}</span>
+     </div>`
+  ).join("");
+  result.innerHTML = details;
+  result.style.display = "flex";
+
+  const postResult = document.getElementById("post-result");
+  postResult.innerHTML = `
     <details class="scoring-note">
       <summary>How the scores are calculated</summary>
       <p>The scoring is deliberately harsh (in technical terms, it is based on the square of the prediction error). By punishing failure more than rewarding success and giving a steep penalty for being confident and wrong, honesty is encouraged.</p>
@@ -461,17 +478,7 @@ function evaluateQuiz() {
   downloadBtn.className = "ghost-btn";
   downloadBtn.textContent = "Download your answers";
   downloadBtn.onclick = downloadResults;
-  finalScore.appendChild(downloadBtn);
-
-  const details = responses.map((r, i) =>
-    `<div class="row ${r.isCorrect ? 'correct' : 'incorrect'}">
-       <span class="verdict">${r.isCorrect ? "Correct" : "Incorrect"}</span> —
-       you answered "${r.answer}" at confidence ${r.confidence}.
-       <span class="meta">${r.fact} · Score: ${r.score}</span>
-     </div>`
-  ).join("");
-  result.innerHTML = details;
-  result.style.display = "flex";
+  postResult.appendChild(downloadBtn);
 }
 
 function getInterpretation(score) {
@@ -507,6 +514,7 @@ function downloadResults() {
 function restartQuiz() {
   document.getElementById("result").style.display = "none";
   document.getElementById("final-score").style.display = "none";
+  document.getElementById("post-result").innerHTML = "";
   renderQuiz();
 }
 
