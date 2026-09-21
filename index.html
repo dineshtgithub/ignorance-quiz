@@ -86,7 +86,7 @@
 
   .scoring-note{
     max-width: 50ch;
-    margin: 0 0 3rem;
+    margin: 1.8rem 0 0;
     font-size: 0.92rem;
     color: var(--ink-dim);
   }
@@ -103,6 +103,10 @@
   }
   .scoring-note[open] summary::before{
     content: "− ";
+  }
+  .scoring-note p{
+    margin: 0.8rem 0 0;
+    line-height: 1.55;
   }
   .score-table-wrap{
     margin-top: 1.4rem;
@@ -230,6 +234,22 @@
     color: var(--green-deep);
   }
   #final-score p{ color: var(--ink-dim); max-width: 48ch; }
+  .score-box{
+    border: 1px solid var(--hair);
+    border-bottom: 3px solid var(--green);
+    border-radius: 4px;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0 1.4rem;
+    font-size: 0.96rem;
+    line-height: 1.55;
+  }
+  .score-box strong{ color: var(--green-deep); }
+  .how-did-you-do{
+    color: var(--ink-dim);
+    font-size: 0.92rem;
+    max-width: 50ch;
+    line-height: 1.55;
+  }
   #download-btn{ margin-top: 0.5rem; }
 
   #result{ display:none; margin-top: 2rem; display: flex; flex-direction: column; gap: 0.9rem; }
@@ -313,26 +333,6 @@
   <h1>How ignorant am I?</h1>
   <p class="intro">Five questions. Pick an answer, then rate your own confidence.</p>
 
-  <details class="scoring-note">
-    <summary>How does the scoring work?</summary>
-    <div class="score-table-wrap">
-    <table class="score-table">
-      <tr>
-        <th>Your confidence (out of 10):</th>
-        <td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td>
-      </tr>
-      <tr>
-        <th>Score if you are right:</th>
-        <td>0</td><td>9</td><td>16</td><td>21</td><td>24</td><td>25</td>
-      </tr>
-      <tr>
-        <th>Score if you are wrong:</th>
-        <td>0</td><td>&minus;11</td><td>&minus;24</td><td>&minus;39</td><td>&minus;56</td><td>&minus;75</td>
-      </tr>
-    </table>
-    </div>
-  </details>
-
   <div id="quiz"></div>
   <div id="final-score"></div>
   <div id="result"></div>
@@ -348,11 +348,16 @@
 
 <script>
 const questions = [
-  { q: "What contains more water by percentage?", a: "Blood", options: ["Blood", "Brain"] },
-  { q: "Who published their key work first?", a: "Charles Darwin", options: ["Charles Darwin", "Gregor Mendel"] },
-  { q: "Which is the bigger planet?", a: "Earth", options: ["Venus", "Earth"] },
-  { q: "Which molecule has more atoms?", a: "Caffeine", options: ["Caffeine", "Aspirin"] },
-  { q: "Which has the higher melting point?", a: "Gold", options: ["Gold", "Silver"] }
+  { q: "What contains more water by percentage?", a: "Blood", options: ["Blood", "Brain"],
+    fact: "The brain is about 75% water, blood is about 80%." },
+  { q: "Who published their key work first?", a: "Charles Darwin", options: ["Charles Darwin", "Gregor Mendel"],
+    fact: "Darwin published On the Origin of Species in 1859, Mendel published Experiments on Plant Hybridization in 1866." },
+  { q: "Which is the bigger planet?", a: "Earth", options: ["Venus", "Earth"],
+    fact: "Venus's radius is 6,052 kilometres, Earth's radius is 6,378 kilometres." },
+  { q: "Which molecule has more atoms?", a: "Caffeine", options: ["Caffeine", "Aspirin"],
+    fact: "Caffeine has 24 atoms, aspirin has 21 atoms." },
+  { q: "Which has the higher melting point?", a: "Gold", options: ["Gold", "Silver"],
+    fact: "Gold's melting point is 1,064 °C, silver's is 962 °C." }
 ];
 
 const scoreTable = {
@@ -420,12 +425,37 @@ function evaluateQuiz() {
     const confidence = parseInt(conf.value);
     const score = isCorrect ? scoreTable[confidence][0] : scoreTable[confidence][1];
     total += score;
-    responses.push({ q: item.q, answer: answer.value, correct: item.a, confidence, isCorrect, score });
+    responses.push({ q: item.q, answer: answer.value, correct: item.a, fact: item.fact, confidence, isCorrect, score });
   }
 
   const finalScore = document.getElementById("final-score");
   finalScore.style.display = "block";
-  finalScore.innerHTML = `<h2>${total}</h2>` + getInterpretation(total);
+  finalScore.innerHTML = `
+    <h2>${total}</h2>
+    <div class="score-box">${getInterpretation(total)}</div>
+    <p class="how-did-you-do">How did you do? Any positive score indicates some degree of awareness about your own knowledge level (the maximum positive score is 125, indicating perfect knowledge with perfect confidence). If your score was negative, you are supremely overconfident.</p>
+    <details class="scoring-note">
+      <summary>How the scores are calculated</summary>
+      <p>The scoring is deliberately harsh (in technical terms, it is based on the square of the prediction error). By punishing failure more than rewarding success and giving a steep penalty for being confident and wrong, honesty is encouraged.</p>
+      <p>People with an exaggerated sense of their own knowledge tend to end up with large negative scores. Those with an awareness of their own doubts tend to mainly use 5s, 6s or 7s, and might end up with a small positive score. People who actually know a lot, or are extremely lucky, get higher scores.</p>
+      <div class="score-table-wrap">
+      <table class="score-table">
+        <tr>
+          <th>Your confidence (out of 10):</th>
+          <td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td>
+        </tr>
+        <tr>
+          <th>Score if you are right:</th>
+          <td>0</td><td>9</td><td>16</td><td>21</td><td>24</td><td>25</td>
+        </tr>
+        <tr>
+          <th>Score if you are wrong:</th>
+          <td>0</td><td>&minus;11</td><td>&minus;24</td><td>&minus;39</td><td>&minus;56</td><td>&minus;75</td>
+        </tr>
+      </table>
+      </div>
+    </details>
+  `;
   const downloadBtn = document.createElement("button");
   downloadBtn.id = "download-btn";
   downloadBtn.className = "ghost-btn";
@@ -437,7 +467,7 @@ function evaluateQuiz() {
     `<div class="row ${r.isCorrect ? 'correct' : 'incorrect'}">
        <span class="verdict">${r.isCorrect ? "Correct" : "Incorrect"}</span> —
        you answered "${r.answer}" at confidence ${r.confidence}.
-       <span class="meta">Correct answer: ${r.correct} · Score: ${r.score}</span>
+       <span class="meta">${r.fact} · Score: ${r.score}</span>
      </div>`
   ).join("");
   result.innerHTML = details;
@@ -445,9 +475,10 @@ function evaluateQuiz() {
 }
 
 function getInterpretation(score) {
-  if (score >= 90) return "<p><strong>Top of the class.</strong> This score generally comes from high knowledge combined with well-calibrated uncertainty.</p>";
-  if (score > 0) return "<p>You have a reasonable sense of your own knowledge. Well done.</p>";
-  return "<p>Your confidence outpaced your accuracy. Try again — a little more doubt goes a long way.</p>";
+  if (score >= 125) return `<strong>Genius!</strong> You knew every answer with total confidence. Either that, or you cheated.`;
+  if (score >= 80) return `<strong>Top of the class!</strong> A score this high generally comes from high knowledge levels combined with good uncertainty assessment.`;
+  if (score >= 0) return `<strong>Solid and dependable.</strong> Like most people, you hedged gaps in your knowledge with low certainty scores, to achieve a low, but still positive, overall score.`;
+  return `<strong>What went wrong?</strong> Your negative score means you got a lower score than someone who just said "I don't know" to every question.`;
 }
 
 function downloadResults() {
@@ -455,7 +486,7 @@ function downloadResults() {
   responses.forEach((r, i) => {
     lines.push(`Q${i + 1}: ${r.q}`);
     lines.push(`  Your answer: ${r.answer} (confidence ${r.confidence})`);
-    lines.push(`  Correct answer: ${r.correct}`);
+    lines.push(`  Correct answer: ${r.correct} — ${r.fact}`);
     lines.push(`  Result: ${r.isCorrect ? "Correct" : "Incorrect"} — score ${r.score}`);
     lines.push("");
   });
