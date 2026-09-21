@@ -1,38 +1,358 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>How Ignorant Am I?</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; padding: 2em; }
-    .question { margin-bottom: 2em; }
-    .options input { margin-right: 0.5em; }
-    .confidence input { margin: 0.5em; }
-    #result, #final-score, #download-link { display: none; margin-top: 2em; padding: 1em; border: 2px solid #ccc; }
-    .correct { color: green; }
-    .incorrect { color: red; }
-    button { margin-top: 1em; padding: 0.5em 1em; }
-    .explanation { margin-top: 0.5em; font-style: italic; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Ignorant Am I? — A Probability Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF9F4;
+    --ink:#20281F;
+    --ink-dim:#5B6B5C;
+    --green-deep:#2E6B33;
+    --green:#3D7C40;
+    --green-soft:#8FBE72;
+    --green-wash: rgba(61,124,64,0.08);
+    --rose:#B65A44;
+    --hair: rgba(32,40,31,0.14);
+    --hair-soft: rgba(32,40,31,0.06);
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-weight: 400;
+    line-height: 1.55;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* ---------- small background art, right side only ---------- */
+  .bg-art{
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: min(34vw, 420px);
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .bg-art svg{ position:absolute; }
+  .bg-rays{ top:0; right:0; width:100%; height:52vh; }
+  .bg-cluster{ top:12vh; right:6%; width:220px; height:220px; }
+
+  @media (max-width: 900px){
+    .bg-art{ width: 26vw; opacity: 0.7; }
+  }
+  @media (max-width: 640px){
+    .bg-art{ display: none; }
+  }
+
+  main{
+    position: relative;
+    z-index: 1;
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 4.5rem 1.5rem 6rem;
+  }
+
+  .eyebrow{
+    font-family:"IBM Plex Mono", monospace;
+    font-size: 0.8rem;
+    color: var(--green);
+    letter-spacing: 0.02em;
+  }
+  h1{
+    font-family: "Fraunces", serif;
+    font-weight: 600;
+    font-size: clamp(2rem, 5vw, 2.7rem);
+    line-height: 1.1;
+    margin: 0.4rem 0 0.6rem;
+    color: var(--green-deep);
+  }
+  .intro{
+    color: var(--ink-dim);
+    font-size: 1rem;
+    max-width: 46ch;
+    margin: 0 0 1.6rem;
+  }
+
+  .scoring-note{
+    max-width: 50ch;
+    margin: 0 0 3rem;
+    font-size: 0.92rem;
+    color: var(--ink-dim);
+  }
+  .scoring-note summary{
+    cursor: pointer;
+    color: var(--green-deep);
+    font-weight: 600;
+    list-style: none;
+  }
+  .scoring-note summary::-webkit-details-marker{ display: none; }
+  .scoring-note summary::before{
+    content: "+ ";
+    color: var(--green);
+  }
+  .scoring-note[open] summary::before{
+    content: "− ";
+  }
+  .score-table-wrap{
+    margin-top: 1.4rem;
+    overflow-x: auto;
+  }
+  .score-table{
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.9rem;
+  }
+  .score-table tr{ border-top: 1px solid var(--hair); }
+  .score-table tr:last-child{ border-bottom: 1px solid var(--hair); }
+  .score-table th{
+    text-align: left;
+    font-weight: 400;
+    color: var(--ink);
+    padding: 0.9rem 0.6rem 0.9rem 0;
+    width: 1%;
+    white-space: normal;
+  }
+  .score-table td{
+    text-align: right;
+    font-family: "IBM Plex Mono", monospace;
+    padding: 0.9rem 0 0.9rem 0.6rem;
+    color: var(--ink);
+  }
+
+  .question{
+    padding: 2.2rem 0;
+    border-top: 1px solid var(--hair);
+  }
+  .question:first-of-type{ border-top: 1px solid var(--hair); }
+  .q-meta{
+    font-family:"IBM Plex Mono", monospace;
+    font-size: 0.8rem;
+    color: var(--ink-dim);
+    margin-bottom: 0.6rem;
+  }
+  .q-text{
+    font-family: "Fraunces", serif;
+    font-size: 1.3rem;
+    font-weight: 500;
+    margin: 0 0 1.3rem;
+    color: var(--green-deep);
+  }
+
+  .options{ display:flex; flex-direction:column; gap: 0.6rem; margin-bottom: 1.6rem; }
+  .opt{ position: relative; }
+  .opt input{
+    position: absolute;
+    opacity: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+  }
+  .opt label{
+    display:block;
+    padding: 0.85rem 1.1rem;
+    border: 1px solid var(--hair);
+    border-radius: 3px;
+    font-size: 1rem;
+    color: var(--ink);
+    background: #fff;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .opt input:checked + label{
+    border-color: var(--green);
+    background: var(--green-wash);
+  }
+  .opt input:focus-visible + label{
+    outline: 2px solid var(--green);
+    outline-offset: 2px;
+  }
+
+  .conf-label{
+    font-size: 0.9rem;
+    color: var(--ink-dim);
+    margin-bottom: 0.7rem;
+  }
+  .confidence{ display:flex; gap: 0.5rem; flex-wrap: wrap; }
+  .confidence .opt label{
+    padding: 0.6rem 0;
+    width: 2.6rem;
+    text-align: center;
+    font-family:"IBM Plex Mono", monospace;
+    font-size: 0.9rem;
+    border-radius: 999px;
+  }
+
+  .submit-row{ margin-top: 3rem; }
+  button{
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 0.98rem;
+    color: #fff;
+    background: var(--green-deep);
+    border: none;
+    border-radius: 3px;
+    padding: 0.85rem 1.7rem;
+    cursor: pointer;
+    transition: transform .1s ease, background .15s ease;
+  }
+  button:hover{ background: var(--green); }
+  button:active{ transform: translateY(1px); }
+  .ghost-btn{
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--hair);
+  }
+  .ghost-btn:hover{ background: var(--hair-soft); }
+
+  #final-score{
+    display:none;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--hair);
+  }
+  #final-score h2{
+    font-family:"Fraunces", serif;
+    font-weight: 600;
+    font-size: 2.2rem;
+    margin: 0 0 0.6rem;
+    color: var(--green-deep);
+  }
+  #final-score p{ color: var(--ink-dim); max-width: 48ch; }
+  #download-btn{ margin-top: 0.5rem; }
+
+  #result{ display:none; margin-top: 2rem; display: flex; flex-direction: column; gap: 0.9rem; }
+  .row{
+    padding: 0.9rem 1rem;
+    border-radius: 3px;
+    border: 1px solid var(--hair);
+    background: #fff;
+    font-size: 0.92rem;
+  }
+  .row.correct{ border-color: rgba(61,124,64,0.4); }
+  .row.incorrect{ border-color: rgba(182,90,68,0.4); }
+  .row .verdict{ font-weight: 600; }
+  .row.correct .verdict{ color: var(--green-deep); }
+  .row.incorrect .verdict{ color: var(--rose); }
+  .row .meta{ color: var(--ink-dim); }
+
+  .restart-row{ margin-top: 2.5rem; }
+
+  .source-note{
+    margin-top: 3.5rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--hair);
+    font-size: 0.82rem;
+    color: var(--ink-dim);
+  }
+  .source-note em{ font-style: italic; }
+
+  @media (max-width: 480px){
+    main{ padding: 2.5rem 1.1rem 4rem; }
+    .question{ padding: 1.7rem 0; }
+    .q-text{ font-size: 1.15rem; }
+    .confidence{ gap: 0.4rem; }
+    .confidence .opt label{ width: 2.35rem; padding: 0.55rem 0; font-size: 0.85rem; }
+    .score-table{ font-size: 0.82rem; }
+    .score-table th, .score-table td{ padding: 0.7rem 0.4rem; }
+    .submit-row button, .ghost-btn{ width: 100%; }
+  }
+
+  @media (max-width: 360px){
+    .confidence .opt label{ width: 2.1rem; }
+  }
+</style>
 </head>
 <body>
-  <h1>Quiz: How ignorant am I?</h1>
+
+<div class="bg-art" aria-hidden="true">
+  <svg class="bg-rays" viewBox="0 0 420 500" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMaxYMin slice">
+    <g stroke="#3D7C40" stroke-width="10" opacity="0.16">
+      <line x1="120" y1="-40" x2="-60" y2="260"/>
+      <line x1="180" y1="-40" x2="0" y2="260"/>
+      <line x1="240" y1="-40" x2="60" y2="260"/>
+      <line x1="300" y1="-40" x2="120" y2="260"/>
+      <line x1="360" y1="-40" x2="180" y2="260"/>
+      <line x1="420" y1="-40" x2="240" y2="260"/>
+      <line x1="480" y1="-40" x2="300" y2="260"/>
+    </g>
+  </svg>
+
+  <svg class="bg-cluster" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10,190 C 40,190 55,60 110,60 C 165,60 180,190 210,190"
+          fill="none" stroke="#2E6B33" stroke-width="2.5" opacity="0.28"/>
+    <line x1="6" y1="190" x2="214" y2="190" stroke="#2E6B33" stroke-width="1.2" opacity="0.22"/>
+    <g transform="translate(120 20) rotate(-10)" opacity="0.24">
+      <rect x="0" y="0" width="58" height="58" rx="8" fill="none" stroke="#2E6B33" stroke-width="2"/>
+      <circle cx="15" cy="15" r="3.2" fill="#2E6B33"/>
+      <circle cx="43" cy="15" r="3.2" fill="#2E6B33"/>
+      <circle cx="15" cy="43" r="3.2" fill="#2E6B33"/>
+      <circle cx="43" cy="43" r="3.2" fill="#2E6B33"/>
+      <circle cx="29" cy="29" r="3.2" fill="#2E6B33"/>
+    </g>
+    <g opacity="0.22">
+      <circle cx="34" cy="170" r="26" fill="none" stroke="#2E6B33" stroke-width="2"/>
+      <circle cx="34" cy="170" r="18" fill="none" stroke="#2E6B33" stroke-width="1"/>
+    </g>
+  </svg>
+</div>
+
+<main>
+  <div class="eyebrow">Spiegelhalter's calibration quiz</div>
+  <h1>How ignorant am I?</h1>
+  <p class="intro">Five questions. Pick an answer, then rate your own confidence.</p>
+
+  <details class="scoring-note">
+    <summary>How does the scoring work?</summary>
+    <div class="score-table-wrap">
+    <table class="score-table">
+      <tr>
+        <th>Your confidence (out of 10):</th>
+        <td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td>
+      </tr>
+      <tr>
+        <th>Score if you are right:</th>
+        <td>0</td><td>9</td><td>16</td><td>21</td><td>24</td><td>25</td>
+      </tr>
+      <tr>
+        <th>Score if you are wrong:</th>
+        <td>0</td><td>&minus;11</td><td>&minus;24</td><td>&minus;39</td><td>&minus;56</td><td>&minus;75</td>
+      </tr>
+    </table>
+    </div>
+  </details>
+
   <div id="quiz"></div>
-  <div id="result"></div>
   <div id="final-score"></div>
-  <a id="download-link" download="quiz_results.txt">Download my results</a>
-  <br>
-  <button onclick="restartQuiz()">Restart the quiz</button>
-  <button onclick="copyScore()">Copy my score</button>
+  <div id="result"></div>
+
+  <div class="restart-row">
+    <button class="ghost-btn" onclick="restartQuiz()">Restart the quiz</button>
+  </div>
+
+  <footer class="source-note">
+    Source: David Spiegelhalter, "Does probability exist?", <em>Nature</em> 636, 560–564 (19/26 December 2024).
+  </footer>
+</main>
 
 <script>
 const questions = [
-  { q: "Which contains more water by percentage?", a: "Brain", options: ["Brain", "Blood"], exp: "The brain is about 73% water, blood is about 50% water." },
-  { q: "Who published their key work first?", a: "Charles Darwin", options: ["Charles Darwin", "Gregor Mendel"], exp: "Darwin published On the Origin of Species in 1859; Mendel published in 1866." },
-  { q: "Which is the bigger planet?", a: "Earth", options: ["Venus", "Earth"], exp: "Venus: 6,052 km radius, Earth: 6,378 km radius." },
-  { q: "Which molecule has more atoms?", a: "Caffeine", options: ["Caffeine", "Aspirin"], exp: "Caffeine has 24 atoms; aspirin has 21 atoms." },
-  { q: "Which has the higher melting point?", a: "Gold", options: ["Gold", "Silver"], exp: "Gold: 1064 °C, Silver: 962 °C." }
+  { q: "What contains more water by percentage?", a: "Blood", options: ["Blood", "Brain"] },
+  { q: "Who published their key work first?", a: "Charles Darwin", options: ["Charles Darwin", "Gregor Mendel"] },
+  { q: "Which is the bigger planet?", a: "Earth", options: ["Venus", "Earth"] },
+  { q: "Which molecule has more atoms?", a: "Caffeine", options: ["Caffeine", "Aspirin"] },
+  { q: "Which has the higher melting point?", a: "Gold", options: ["Gold", "Silver"] }
 ];
 
 const scoreTable = {
@@ -41,26 +361,45 @@ const scoreTable = {
 };
 
 let responses = [];
-let startTime;
 
 function renderQuiz() {
-  startTime = Date.now();
   const quiz = document.getElementById("quiz");
   quiz.innerHTML = "";
+
   questions.forEach((item, index) => {
     const div = document.createElement("div");
     div.className = "question";
-    div.innerHTML = `<strong>Question ${index + 1} of 5:</strong><br>${item.q}`;
-    const opts = item.options.map(opt => `<label><input type="radio" name="q${index}" value="${opt}">${opt}</label><br>`).join("");
+
+    div.innerHTML = `<div class="q-meta">Question ${index + 1} of ${questions.length}</div>
+      <div class="q-text">${item.q}</div>`;
+
+    const opts = item.options.map((opt, oi) =>
+      `<div class="opt">
+         <input type="radio" id="q${index}o${oi}" name="q${index}" value="${opt}">
+         <label for="q${index}o${oi}">${opt}</label>
+       </div>`
+    ).join("");
     div.innerHTML += `<div class="options">${opts}</div>`;
-    const scale = [...Array(6)].map((_, i) => i + 5).map(val => `<label>${val}<input type="radio" name="c${index}" value="${val}"></label>`).join(" ");
-    div.innerHTML += `<p>How confident are you, on a scale from 5 to 10?</p><div class="confidence">${scale}</div>`;
+
+    div.innerHTML += `<p class="conf-label">How confident are you, on a scale from 5 to 10?</p>`;
+    const scale = [...Array(6)].map((_, i) => i + 5).map(val =>
+      `<div class="opt">
+         <input type="radio" id="c${index}v${val}" name="c${index}" value="${val}">
+         <label for="c${index}v${val}">${val}</label>
+       </div>`
+    ).join("");
+    div.innerHTML += `<div class="confidence">${scale}</div>`;
+
     quiz.appendChild(div);
   });
+
+  const row = document.createElement("div");
+  row.className = "submit-row";
   const btn = document.createElement("button");
-  btn.textContent = "Submit Quiz";
+  btn.textContent = "Submit quiz";
   btn.onclick = evaluateQuiz;
-  quiz.appendChild(btn);
+  row.appendChild(btn);
+  quiz.appendChild(row);
 }
 
 function evaluateQuiz() {
@@ -68,7 +407,9 @@ function evaluateQuiz() {
   let total = 0;
   const result = document.getElementById("result");
   result.innerHTML = "";
-  questions.forEach((item, i) => {
+
+  for (let i = 0; i < questions.length; i++) {
+    const item = questions[i];
     const answer = document.querySelector(`input[name=q${i}]:checked`);
     const conf = document.querySelector(`input[name=c${i}]:checked`);
     if (!answer || !conf) {
@@ -79,40 +420,63 @@ function evaluateQuiz() {
     const confidence = parseInt(conf.value);
     const score = isCorrect ? scoreTable[confidence][0] : scoreTable[confidence][1];
     total += score;
-    responses.push({ q: item.q, answer: answer.value, correct: item.a, confidence, isCorrect, score, explanation: item.exp });
-  });
-  document.getElementById("final-score").style.display = "block";
-  const timeTaken = Math.round((Date.now() - startTime) / 1000);
-  document.getElementById("final-score").innerHTML = `<h2>Final score: ${total}</h2>${getInterpretation(total)}<p><small>Time taken: ${timeTaken} seconds</small></p>`;
+    responses.push({ q: item.q, answer: answer.value, correct: item.a, confidence, isCorrect, score });
+  }
+
+  const finalScore = document.getElementById("final-score");
+  finalScore.style.display = "block";
+  finalScore.innerHTML = `<h2>${total}</h2>` + getInterpretation(total);
+  const downloadBtn = document.createElement("button");
+  downloadBtn.id = "download-btn";
+  downloadBtn.className = "ghost-btn";
+  downloadBtn.textContent = "Download your answers";
+  downloadBtn.onclick = downloadResults;
+  finalScore.appendChild(downloadBtn);
+
   const details = responses.map((r, i) =>
-    `<p><strong>Q${i + 1}</strong> - ${r.isCorrect ? "✅ Correct" : "❌ Incorrect"}: You answered "${r.answer}" with confidence ${r.confidence}. Correct answer: ${r.correct}. [Score: ${r.score}]<br><span class='explanation'>${r.explanation}</span></p>`
+    `<div class="row ${r.isCorrect ? 'correct' : 'incorrect'}">
+       <span class="verdict">${r.isCorrect ? "Correct" : "Incorrect"}</span> —
+       you answered "${r.answer}" at confidence ${r.confidence}.
+       <span class="meta">Correct answer: ${r.correct} · Score: ${r.score}</span>
+     </div>`
   ).join("");
   result.innerHTML = details;
-  result.style.display = "block";
-  const downloadData = details.replace(/<[^>]*>/g, "") + `\nFinal score: ${total}`;
-  const blob = new Blob([downloadData], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const link = document.getElementById("download-link");
-  link.href = url;
-  link.style.display = "block";
+  result.style.display = "flex";
 }
 
 function getInterpretation(score) {
-  if (score >= 90) return "<p><strong>Top of the class!</strong> This score generally comes from high knowledge combined with great uncertainty awareness.</p>";
-  if (score > 0) return "<p>You have a good sense of your knowledge. Well done!</p>";
-  return "<p>Caution: Your confidence may have outpaced your accuracy. Try again with a bit more doubt.</p>";
+  if (score >= 90) return "<p><strong>Top of the class.</strong> This score generally comes from high knowledge combined with well-calibrated uncertainty.</p>";
+  if (score > 0) return "<p>You have a reasonable sense of your own knowledge. Well done.</p>";
+  return "<p>Your confidence outpaced your accuracy. Try again — a little more doubt goes a long way.</p>";
+}
+
+function downloadResults() {
+  const lines = ["How ignorant am I? — Your results", ""];
+  responses.forEach((r, i) => {
+    lines.push(`Q${i + 1}: ${r.q}`);
+    lines.push(`  Your answer: ${r.answer} (confidence ${r.confidence})`);
+    lines.push(`  Correct answer: ${r.correct}`);
+    lines.push(`  Result: ${r.isCorrect ? "Correct" : "Incorrect"} — score ${r.score}`);
+    lines.push("");
+  });
+  const total = responses.reduce((sum, r) => sum + r.score, 0);
+  lines.push(`Final score: ${total}`);
+
+  const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "ignorance-quiz-results.txt";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function restartQuiz() {
   document.getElementById("result").style.display = "none";
   document.getElementById("final-score").style.display = "none";
-  document.getElementById("download-link").style.display = "none";
   renderQuiz();
-}
-
-function copyScore() {
-  const text = document.getElementById("final-score").innerText;
-  navigator.clipboard.writeText(text).then(() => alert("Score copied to clipboard!"));
 }
 
 renderQuiz();
